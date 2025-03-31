@@ -89,18 +89,17 @@ const App: React.FC = () => {
           console.log(`Получен uuid для ${email}:`, uuid);
           // 3. Получение 19 init_token из workspace
           const initTokens: string[] = [];
-          for (let i = 2; i <= 20; i++) {
-            const workspaceRes = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
-              headers: { Authorization: `Bearer ${access_token}` }
-            });
-            // Пробуем разные варианты получения токена
-            const tokenValue = workspaceRes.data?.init_token || workspaceRes.data?.token || (workspaceRes.data?.data ? workspaceRes.data.data.init_token : "");
-            if (!tokenValue) {
-              console.warn(`Init token не найден для ${email} на запросе ${i}`);
-              throw new Error(`Init token не найден для запроса ${i}`);
-            }
-            initTokens.push(tokenValue);
-          }
+for (let i = 2; i <= 20; i++) {
+  const workspaceRes = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
+    headers: { Authorization: `Bearer ${access_token}` }
+  });
+  const tokenValue = workspaceRes.data?.item?.init_token;
+  if (!tokenValue) {
+    console.warn(`Init token не найден для ${email} на запросе ${i}`);
+    throw new Error(`Init token не найден для запроса ${i}`);
+  }
+  initTokens.push(tokenValue);
+}
           console.log(`Получены init_token для ${email}:`, initTokens);
 
           resultsData.push([email, access_token, refresh_token, uuid, ...initTokens]);
