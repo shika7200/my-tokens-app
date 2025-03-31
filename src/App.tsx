@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 
-interface Tokens {
-  access_token: string;
-  refresh_token: string;
-}
-
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -30,12 +25,13 @@ const App: React.FC = () => {
       const data = event.target?.result;
       const workbook = XLSX.read(data, { type: 'binary' });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       for (let i = 0; i < jsonData.length; i++) {
         const login = jsonData[i]['лигин_ficto'];
         const password = jsonData[i]['пароль_ficto'];
+
+        if (!login || !password || login === 'лигин_ficto') continue;
 
         try {
           const response = await fetch('/api/client/auth/login', {
@@ -58,15 +54,32 @@ const App: React.FC = () => {
           const result = await response.json();
 
           if (result.status) {
-            jsonData[i]['access_token'] = result.access_token;
-            jsonData[i]['refresh_token'] = result.refresh_token;
+            const access_token = result.access_token;
+            const refresh_token = result.refresh_token;
+
+            // ✅ индивидуальные токены
+            jsonData[i]['access_token'] = access_token;
+            jsonData[i]['refresh_token'] = refresh_token;
+
+            // ✅ получаем UUID
+            const uuidResponse = await fetch('/api/client/grants?avalible=true&page=1', {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+              },
+            });
+
+            const uuidJson = await uuidResponse.json();
+            const uuid = uuidJson?.items?.[0]?.uuid;
+            jsonData[i]['uuid'] = uuid || 'uuid не найден';
           } else {
             jsonData[i]['access_token'] = 'Ошибка';
             jsonData[i]['refresh_token'] = 'Ошибка';
+            jsonData[i]['uuid'] = 'Ошибка';
           }
         } catch (error) {
           jsonData[i]['access_token'] = 'Ошибка';
           jsonData[i]['refresh_token'] = 'Ошибка';
+          jsonData[i]['uuid'] = 'Ошибка';
         }
       }
 
@@ -74,7 +87,7 @@ const App: React.FC = () => {
       const newWorkbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, 'Обработано');
 
-      XLSX.writeFile(newWorkbook, 'обработанные_токены.xlsx');
+      XLSX.writeFile(newWorkbook, 'обработанные_токены_и_uuid.xlsx');
 
       setLoading(false);
       alert('Файл успешно обработан и скачан!');
@@ -111,10 +124,11 @@ const App: React.FC = () => {
           cursor: 'pointer',
         }}
       >
-        {loading ? 'Обработка...' : '🚀 Получить токены'}
+        {loading ? 'Обработка...' : '🚀 Получить токены и uuid'}
       </button>
     </div>
   );
 };
 
 export default App;
+
