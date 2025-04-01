@@ -1,5 +1,6 @@
 import axios from 'axios';
-
+import { Buffer } from 'buffer';
+import * as XLSX from 'xlsx';
 /**
  * Сервис для работы с API Ficto.
  */
@@ -74,5 +75,55 @@ export class ApiService {
       initTokens.push(tokenValue);
     }
     return initTokens;
+  }
+
+ /**
+ * Экспортирует данные таблицы в формате XLSX для одного запроса.
+ *
+ * @param panelId - Идентификатор панели.
+ * @param token - Токен init_token, используемый для запроса.
+ * @returns XLSX файл в формате Blob.
+ */
+ async exportTable(panelId: number, token: string): Promise<Buffer> {
+    const url = 'https://api.ficto.ru/client/layout/table/export';
+    const data = {
+      params: { panel_id: panelId },
+      panel_id: panelId,
+      token: token,
+      separators: {}
+    };
+
+    const response = await axios.post(url, data, {
+      headers: {
+        'L-Token': token
+      },
+      responseType: 'arraybuffer' // Используем arraybuffer вместо blob
+    });
+
+    const buffer: Buffer = Buffer.from(response.data); // явно преобразуем в Buffer
+
+    // Отладка с XLSX
+    try {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      console.log('Workbook debug:', workbook);
+    } catch (e) {
+      console.error('Ошибка при чтении XLSX-файла для отладки:', e);
+    }
+
+    return buffer;
+}
+
+
+  /**
+ * Экспортирует XLSX файлы для каждого init токена.
+ * Количество файлов будет равно количеству init токенов (например, от 2 до 20).
+ *
+ * @param tokens - Массив init токенов.
+ * @param panelId - Идентификатор панели.
+ * @returns Массив XLSX файлов в формате Buffer.
+ */
+async exportAllTables(tokens: string[], panelId: number ): Promise<Buffer[]> {
+    const exportPromises = tokens.map(token => this.exportTable(panelId, token));
+    return await Promise.all(exportPromises);
   }
 }
