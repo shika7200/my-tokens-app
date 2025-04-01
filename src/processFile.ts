@@ -1,5 +1,23 @@
 import { ExcelService } from './ExcelService';
+// processFile.ts
 
+export interface ProcessFileCallbacks {
+    /**
+     * Устанавливает общее количество строк для обработки.
+     * @param total - Общее количество строк.
+     */
+    onSetTotal: (total: number) => void;
+    /**
+     * Вызывается при обновлении количества обработанных строк.
+     * @param processed - Текущее количество обработанных строк.
+     */
+    onProgress: (processed: number) => void;
+    /**
+     * Вызывается при возникновении ошибки для конкретного email.
+     * @param email - Email, для которого произошла ошибка.
+     */
+    onError: (email: string) => void;
+  }
 /**
  * Обрабатывает Excel-файл, собирает учетные данные и инициирует запрос на формирование архива архивов.
  *
