@@ -14,26 +14,39 @@ const App: React.FC = () => {
       const response = await fetch('http://localhost:3000/api/exportAll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }) // panel_id по умолчанию выставляется на сервере
+        body: JSON.stringify({ email, password })
       });
+  
       if (!response.ok) {
         throw new Error(`Ошибка запроса: ${response.statusText}`);
       }
-      // Получаем архив как Blob
+  
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const match = contentDisposition?.match(/filename="?([^"]+)"?/);
+  
+      if (!match || !match[1]) {
+        throw new Error('Сервер не прислал имя файла в заголовке Content-Disposition');
+      }
+  
+      const filename = match[1];
       const blob = await response.blob();
-      // Создаем ссылку для скачивания
       const url = window.URL.createObjectURL(blob);
+  
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'export.zip';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+  
     } catch (error) {
       console.error('Ошибка скачивания архива:', error);
+      alert(`Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     }
   };
+  
+  
 
   return (
     <div

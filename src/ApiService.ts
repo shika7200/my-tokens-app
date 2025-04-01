@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Buffer } from 'buffer';
-import * as XLSX from 'xlsx';
+
 /**
  * Сервис для работы с API Ficto.
  */
@@ -102,13 +102,7 @@ export class ApiService {
 
     const buffer: Buffer = Buffer.from(response.data); // явно преобразуем в Buffer
 
-    // Отладка с XLSX
-    try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      console.log('Workbook debug:', workbook);
-    } catch (e) {
-      console.error('Ошибка при чтении XLSX-файла для отладки:', e);
-    }
+  
 
     return buffer;
 }

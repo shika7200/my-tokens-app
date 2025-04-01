@@ -50,13 +50,41 @@ app.post('/api/processAll', async ({ body }) => {
   }
 });
 
-app.post('/api/exportAll', async ({ body }) => {
-  const requestBody = await body;
-  const response = await exportAllHandler(requestBody);
-  // Добавляем CORS-заголовок к ответу
-  response.headers.set("Access-Control-Allow-Origin", "*");
-  return response;
+app.post("/api/exportAll", async ({ body }) => {
+  try {
+    
+    const requestBody = await body as {
+      email: string;
+      password: string;
+      panel_id?: number;
+    };
+    
+    const { zipContent, filename } = await exportAllHandler(requestBody);
+
+    return new Response(zipContent, {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Expose-Headers": "Content-Disposition",
+        "Cache-Control": "no-store"
+      }
+    });
+  } catch (error: any) {
+    console.error("Ошибка в API:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        }
+      }
+    );
+  }
 });
+
 
 app.listen(3000);
 
