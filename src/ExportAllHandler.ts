@@ -22,28 +22,35 @@ export async function exportAllHandler(
       const { email, password } = credentials;
 
       if (!email || !password) {
-        throw new Error("Необходимо указать email и password для всех элементов");
+        console.error("Пропуск учетной записи - отсутствует email или password");
+        return; // Пропускаем эту учетку
       }
 
-      // Выполнение логики для каждого пользователя
-      const tokens = await apiService.login(email, password);
-      const uuid = await apiService.getUuid(tokens.access_token);
-      const initTokens = await apiService.getInitTokens(uuid, tokens.access_token);
-      const files: Buffer[] = await apiService.exportAllTables(initTokens);
+      try {
+        // Выполнение логики для каждого пользователя
+        const tokens = await apiService.login(email, password);
+        const uuid = await apiService.getUuid(tokens.access_token);
+        const initTokens = await apiService.getInitTokens(uuid, tokens.access_token);
+        const files: Buffer[] = await apiService.exportAllTables(initTokens);
 
-      // Создаём отдельный архив для текущего пользователя
-      const userZip = new JSZip();
-      files.forEach((fileBuffer, index) => {
-        // Первый файл (index === 0) - xlsm, остальные - xlsx
-        const ext = index === 0 ? 'xlsm' : 'xlsx';
-        userZip.file(`export_${index + 1}.${ext}`, fileBuffer, { binary: true });
-      });
+        // Создаём отдельный архив для текущего пользователя
+        const userZip = new JSZip();
+        files.forEach((fileBuffer, index) => {
+          // Первый файл (index === 0) - xlsm, остальные - xlsx
+          const ext = index === 0 ? 'xlsm' : 'xlsx';
+          userZip.file(`export_${index + 1}.${ext}`, fileBuffer, { binary: true });
+        });
 
-      const userZipContent = await userZip.generateAsync({ type: "nodebuffer" });
-      const safeEmail = email.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+        const userZipContent = await userZip.generateAsync({ type: "nodebuffer" });
+        const safeEmail = email.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
-      // Добавляем полученный архив в главный архив с именем, основанным на email
-      mainZip.file(`${safeEmail}_export.zip`, userZipContent, { binary: true });
+        // Добавляем полученный архив в главный архив с именем, основанным на email
+        mainZip.file(`${safeEmail}_export.zip`, userZipContent, { binary: true });
+      } catch (error) {
+        console.error(`Ошибка обработки учетной записи ${email}:`, error);
+        // Пропускаем эту учетку, продолжая обработку остальных
+        return;
+      }
     })
   );
 
@@ -52,3 +59,4 @@ export async function exportAllHandler(
 
   return { zipContent, filename };
 }
+
