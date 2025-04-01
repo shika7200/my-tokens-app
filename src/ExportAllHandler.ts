@@ -19,7 +19,7 @@ export async function exportAllHandler(
   // Для каждого объекта выполняем логику экспорта
   await Promise.all(
     requestBody.map(async (credentials) => {
-      const { email, password, panel_id = 3293 } = credentials;
+      const { email, password } = credentials;
 
       if (!email || !password) {
         throw new Error("Необходимо указать email и password для всех элементов");
@@ -29,12 +29,14 @@ export async function exportAllHandler(
       const tokens = await apiService.login(email, password);
       const uuid = await apiService.getUuid(tokens.access_token);
       const initTokens = await apiService.getInitTokens(uuid, tokens.access_token);
-      const files: Buffer[] = await apiService.exportAllTables(initTokens, panel_id);
+      const files: Buffer[] = await apiService.exportAllTables(initTokens);
 
       // Создаём отдельный архив для текущего пользователя
       const userZip = new JSZip();
       files.forEach((fileBuffer, index) => {
-        userZip.file(`export_${index + 1}.xlsm`, fileBuffer, { binary: true });
+        // Первый файл (index === 0) - xlsm, остальные - xlsx
+        const ext = index === 0 ? 'xlsm' : 'xlsx';
+        userZip.file(`export_${index + 1}.${ext}`, fileBuffer, { binary: true });
       });
 
       const userZipContent = await userZip.generateAsync({ type: "nodebuffer" });

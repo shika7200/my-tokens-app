@@ -7,11 +7,6 @@ import { Buffer } from 'buffer';
 export class ApiService {
   /**
    * Выполняет авторизацию пользователя.
-   *
-   * @param email - Строка с email пользователя.
-   * @param password - Строка с паролем пользователя.
-   * @returns Объект с полями access_token и refresh_token.
-   * @throws Ошибка, если авторизация не удалась.
    */
   async login(email: string, password: string) {
     const loginData = {
@@ -35,10 +30,6 @@ export class ApiService {
 
   /**
    * Получает UUID гранта пользователя.
-   *
-   * @param access_token - Строка с access token пользователя.
-   * @returns Строка с UUID, полученным из списка грантов.
-   * @throws Ошибка, если UUID не найден.
    */
   async getUuid(access_token: string) {
     const response = await axios.get('https://api.ficto.ru/client/grants?avalible=true&page=1', {
@@ -56,11 +47,6 @@ export class ApiService {
 
   /**
    * Получает 19 init_token для заданного UUID.
-   *
-   * @param uuid - Строка с UUID гранта.
-   * @param access_token - Строка с access token пользователя.
-   * @returns Массив из 19 init_token.
-   * @throws Ошибка, если хотя бы один init_token не найден.
    */
   async getInitTokens(uuid: string, access_token: string) {
     const initTokens: string[] = [];
@@ -77,14 +63,10 @@ export class ApiService {
     return initTokens;
   }
 
- /**
- * Экспортирует данные таблицы в формате XLSX для одного запроса.
- *
- * @param panelId - Идентификатор панели.
- * @param token - Токен init_token, используемый для запроса.
- * @returns XLSX файл в формате Blob.
- */
- async exportTable(panelId: number, token: string): Promise<Buffer> {
+  /**
+   * Экспортирует данные таблицы в формате XLSX для одного запроса.
+   */
+  async exportTable(panelId: number, token: string): Promise<Buffer> {
     const url = 'https://api.ficto.ru/client/layout/table/export';
     const data = {
       params: { panel_id: panelId },
@@ -97,27 +79,27 @@ export class ApiService {
       headers: {
         'L-Token': token
       },
-      responseType: 'arraybuffer' // Используем arraybuffer вместо blob
+      responseType: 'arraybuffer'
     });
 
-    const buffer: Buffer = Buffer.from(response.data); // явно преобразуем в Buffer
-
-  
-
+    const buffer: Buffer = Buffer.from(response.data);
     return buffer;
-}
+  }
 
-
-  /**
- * Экспортирует XLSX файлы для каждого init токена.
- * Количество файлов будет равно количеству init токенов (например, от 2 до 20).
+/**
+ * Экспортирует XLSX файлы для каждого init_token.
+ * Для первого токена используется panel_id = 3293,
+ * а для остальных вычисляется: panel_id = 3253 + (index * 2)
+ * Например, первый токен – panel_id 3293, второй – 3255, третий – 3257 и т.д.
  *
- * @param tokens - Массив init токенов.
- * @param panelId - Идентификатор панели.
+ * @param tokens Массив init_token.
  * @returns Массив XLSX файлов в формате Buffer.
  */
-async exportAllTables(tokens: string[], panelId: number ): Promise<Buffer[]> {
-    const exportPromises = tokens.map(token => this.exportTable(panelId, token));
+async exportAllTables(tokens: string[]): Promise<Buffer[]> {
+    const exportPromises = tokens.map((token, index) => {
+      const panelId = index === 0 ? 3293 : (3253 + (index-1) * 2);
+      return this.exportTable(panelId, token);
+    });
     return await Promise.all(exportPromises);
   }
 }

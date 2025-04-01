@@ -25,7 +25,7 @@ export class ExcelService {
    */
   writeResults(resultsData: any[][]) {
     const headerRow = ["Email", "Access Token", "Refresh Token", "UUID"];
-    for (let j = 2; j <= 20; j++) {
+    for (let j = 1; j <= 20; j++) {
       headerRow.push(`Init Token ${j}`);
     }
     const outputData = [headerRow, ...resultsData];
