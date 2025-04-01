@@ -5,33 +5,34 @@ import './App.css';
 const App: React.FC = () => {
   const { isProcessing, processedCount, totalCount, errorEmails, fileInputRef, handleFileSelect, handleDrop } = useProcessFile();
   
-  // Новые стейты для email и пароля для запроса экспорта архива
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  // Массив для хранения почт и паролей
+  const [credentials, setCredentials] = useState<{ email: string; password: string }[]>([]);
 
   const handleDownload = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/exportAll', {
+      const response = await fetch('http://localhost:3000/api/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(credentials) // Отправляем массив учетных данных
       });
   
       if (!response.ok) {
         throw new Error(`Ошибка запроса: ${response.statusText}`);
       }
   
+      // Извлекаем имя файла из заголовка Content-Disposition
       const contentDisposition = response.headers.get('Content-Disposition');
       const match = contentDisposition?.match(/filename="?([^"]+)"?/);
-  
       if (!match || !match[1]) {
         throw new Error('Сервер не прислал имя файла в заголовке Content-Disposition');
       }
-  
       const filename = match[1];
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
   
+      // Получаем бинарное содержимое архива
+      const blob = await response.blob();
+  
+      // Создаем ссылку для скачивания
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -39,14 +40,23 @@ const App: React.FC = () => {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-  
     } catch (error) {
       console.error('Ошибка скачивания архива:', error);
       alert(`Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
     }
   };
-  
-  
+
+  // Обработчик для добавления новой пары email/пароль
+  const handleAddCredentials = () => {
+    setCredentials([...credentials, { email: '', password: '' }]);
+  };
+
+  // Обработчик изменения данных
+  const handleChangeCredentials = (index: number, field: 'email' | 'password', value: string) => {
+    const updatedCredentials = [...credentials];
+    updatedCredentials[index][field] = value;
+    setCredentials(updatedCredentials);
+  };
 
   return (
     <div
@@ -57,7 +67,7 @@ const App: React.FC = () => {
       <h1 className="app-title">Получение Ficto токенов</h1>
 
       <div className="form-container">
-        {/* Секция загрузки файла (без изменений) */}
+        {/* Секция загрузки файла */}
         <div style={{ marginBottom: '20px' }}>
           <label htmlFor="fileUpload" className="file-upload-label">
             Выберите Excel-файл:
@@ -80,32 +90,41 @@ const App: React.FC = () => {
           {isProcessing ? 'Обработка...' : '🚀 Получить токены и uuid'}
         </button>
 
-        {/* Новая секция для ввода email и пароля */}
+        {/* Секция для ввода учетных данных для экспорта */}
         <div style={{ marginTop: '20px' }}>
-          <label htmlFor="emailInput">Email:</label>
-          <input
-            id="emailInput"
-            type="email"
-            placeholder="Введите email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%', marginBottom: '10px' }}
-          />
-          <label htmlFor="passwordInput">Пароль:</label>
-          <input
-            id="passwordInput"
-            type="password"
-            placeholder="Введите пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{ width: '100%', marginBottom: '10px' }}
-          />
+          <button onClick={handleAddCredentials} className="action-button">
+            Добавить данные для экспорта
+          </button>
+
+          {credentials.map((cred, index) => (
+            <div key={index} style={{ marginTop: '20px' }}>
+              <label htmlFor={`emailInput_${index}`}>Email {index + 1}:</label>
+              <input
+                id={`emailInput_${index}`}
+                type="email"
+                placeholder="Введите email"
+                value={cred.email}
+                onChange={(e) => handleChangeCredentials(index, 'email', e.target.value)}
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+              <label htmlFor={`passwordInput_${index}`}>Пароль {index + 1}:</label>
+              <input
+                id={`passwordInput_${index}`}
+                type="password"
+                placeholder="Введите пароль"
+                value={cred.password}
+                onChange={(e) => handleChangeCredentials(index, 'password', e.target.value)}
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+            </div>
+          ))}
+
           <button
             onClick={handleDownload}
-            disabled={!email || !password}
+            disabled={credentials.some((cred) => !cred.email || !cred.password)}
             className="action-button"
           >
-            Скачать архив с XLSX
+            Скачать архивы
           </button>
         </div>
 
@@ -128,8 +147,7 @@ const App: React.FC = () => {
 
       <div className="info-text">
         <p>
-          Файлы будут сохранены в директорию загрузок с именами, соответствующими
-          учреждениям
+          Файлы будут сохранены в директорию загрузок с именами, соответствующими учреждениям
         </p>
       </div>
 

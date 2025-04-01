@@ -50,15 +50,14 @@ app.post('/api/processAll', async ({ body }) => {
   }
 });
 
-app.post("/api/exportAll", async ({ body }) => {
+app.post("/api/export", async ({ body }) => {
   try {
-    
-    const requestBody = await body as {
+    const requestBody = (await body) as {
       email: string;
       password: string;
       panel_id?: number;
-    };
-    
+    }[];
+
     const { zipContent, filename } = await exportAllHandler(requestBody);
 
     return new Response(zipContent, {
@@ -84,6 +83,7 @@ app.post("/api/exportAll", async ({ body }) => {
     );
   }
 });
+
 
 
 app.listen(3000);
