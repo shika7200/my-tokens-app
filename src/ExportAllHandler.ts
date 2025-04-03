@@ -1,6 +1,7 @@
 import { Buffer } from "buffer";
 import JSZip from "jszip";
 import { ApiService } from "./ApiService";
+import { ExcelService } from "./ExcelService";
 
 export async function exportAllHandler(
   requestBody: {
@@ -15,6 +16,7 @@ export async function exportAllHandler(
 
   const mainZip = new JSZip();
   const apiService = new ApiService();
+  const excelService = new ExcelService();
 
   // Для каждого объекта выполняем логику экспорта
   await Promise.all(
@@ -41,6 +43,10 @@ export async function exportAllHandler(
           userZip.file(`export_${index + 1}.${ext}`, fileBuffer, { binary: true });
         });
 
+        // Создаём дополнительный xlsx-отчёт с init токенами
+        const reportBuffer: Buffer = excelService.createInitTokensReport(email, initTokens);
+        userZip.file(`init_tokens_report.xlsx`, reportBuffer, { binary: true });
+
         const userZipContent = await userZip.generateAsync({ type: "nodebuffer" });
         const safeEmail = email.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
@@ -59,4 +65,3 @@ export async function exportAllHandler(
 
   return { zipContent, filename };
 }
-

@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import * as XLSX from 'xlsx';
 
 /**
@@ -35,5 +36,30 @@ export class ExcelService {
     const dateStr = new Date().toISOString().slice(0, 10); // Формат ГГГГ-ММ-ДД
     const outputFileName = `Результаты_${dateStr}.xlsx`;
     XLSX.writeFile(outBook, outputFileName);
+  }
+
+  /**
+   * Создаёт xlsx-отчёт с 20 столбцами, где первый столбец — email, 
+   * а следующие 19 столбцов — init токены для данной учётной записи.
+   *
+   * @param email Email учётной записи.
+   * @param tokens Массив init токенов.
+   * @returns Buffer с содержимым xlsx-файла.
+   */
+  createInitTokensReport(email: string, tokens: string[]): Buffer {
+    // Формируем ровно 20 ячеек: первый email, затем 19 токенов (или пустых строк)
+    const row = [email];
+    for (let i = 0; i < 19; i++) {
+      row.push(tokens[i] || '');
+    }
+    
+    // Создаём рабочий лист из одной строки
+    const ws = XLSX.utils.aoa_to_sheet([row]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    
+    // Генерируем Buffer с содержимым xlsx-файла
+    const buffer: Buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    return buffer;
   }
 }
