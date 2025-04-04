@@ -33,15 +33,11 @@ export async function exportAllHandler(
         const tokens = await apiService.login(email, password);
         const uuid = await apiService.getUuid(tokens.access_token);
         const initTokens = await apiService.getInitTokens(uuid, tokens.access_token);
-        const files: Buffer[] = await apiService.exportAllTables(initTokens);
+     
 
         // Создаём отдельный архив для текущего пользователя
         const userZip = new JSZip();
-        files.forEach((fileBuffer, index) => {
-          // Первый файл (index === 0) - xlsm, остальные - xlsx
-          const ext = index === 0 ? 'xlsm' : 'xlsx';
-          userZip.file(`export_${index + 1}.${ext}`, fileBuffer, { binary: true });
-        });
+       
 
         // Создаём дополнительный xlsx-отчёт с init токенами
         const reportBuffer: Buffer = excelService.createInitTokensReport(email, initTokens);
