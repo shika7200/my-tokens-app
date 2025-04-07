@@ -5,5 +5,6 @@
 ## Как запускать ?
 - должен быть установлен bun.js (https://bun.sh/)
 -  bun install
+- bun run server (для запуска сервера )
 -  bun run dev (покажет порт просмотра )
 
