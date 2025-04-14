@@ -1,5 +1,8 @@
 import { InputJson } from "./apiService_types";
-import { createSaveDataRequest } from "./parse_Doxcelljson";
+
+import { writeFileSync } from 'fs';
+import { createSectionRequest } from "./parse_Doxcelljson";
+import { dataMapping } from "./mapping";
 
 const inputJson: InputJson = {
     "doxcellLogin" : "48631862",
@@ -1328,6 +1331,11 @@ const inputJson: InputJson = {
     }
   };
   
-  const finalRequestData = createSaveDataRequest(inputJson);
-  console.log(finalRequestData, { depth: null });
-  
+// Генерация отдельных запросов по каждой секции
+const sectionKeys = Object.keys(dataMapping) as (keyof typeof dataMapping)[];
+
+sectionKeys.forEach(sectionKey => {
+  const requestData = createSectionRequest(sectionKey, inputJson);
+  const fileName = `${sectionKey.toLowerCase()}_request.json`;
+  writeFileSync(fileName, JSON.stringify(requestData, null, 2));
+});
