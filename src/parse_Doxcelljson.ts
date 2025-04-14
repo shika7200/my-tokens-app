@@ -46,16 +46,18 @@ export const createSectionRequest = (sectionKey: string, input: InputJson): Sect
   const table: TableRow[] = rows.map(({ row_id, columns }) => {
     const parsedColumns: Record<string, number | string | null> = {};
 
-    for (const columnId in columns) {
-      const factorKey = columns[columnId as keyof typeof columns];
-      const rawValue = input.factors[factorKey];
-
-      parsedColumns[columnId] =
-        rawValue === undefined || rawValue === ''
-          ? null
-          : parseValue(rawValue);
-    }
-
+    for (const [columnId, factorKey] of Object.entries(columns)) {
+        if (factorKey === null) {
+          parsedColumns[columnId] = null;
+          continue; // если factorKey равен null, переходим к следующей итерации
+        }
+        const rawValue = input.factors[factorKey];
+        parsedColumns[columnId] =
+          rawValue === undefined || rawValue === ''
+            ? null
+            : parseValue(rawValue);
+      }
+      
     return {
       panel_id,
       row_id,
