@@ -11,39 +11,37 @@ import { ApiService } from "./ApiService";
  * Если для какого-либо пользователя возникает ошибка, в результат добавляется объект с полем error.
  *
  * @param users - Массив объектов, содержащих email и password.
- * @returns Массив объектов, где для каждого объекта присутствуют:
- *   { email, access_token, refresh_token, uuid, initTokens: string[] }
- *   либо { email, error } при ошибке.
+ * @returns Массив объектов с результатом для каждого пользователя.
  */
 export async function processAllUsers(users: { email: string; password: string }[]): Promise<any[]> {
   const apiService = new ApiService();
-  const results: any[] = [];
 
-  for (const user of users) {
+  const userPromises = users.map(async (user) => {
     if (!user.email || !user.password) {
-      results.push({
-        email: user.email || null,
-        error: "Отсутствует email или пароль"
-      });
-      continue;
+      return { email: user.email || null, error: "Отсутствует email или пароль" };  
     }
+
     try {
       const tokens = await apiService.login(user.email, user.password);
+      
+      // Получение UUID с дополнительным контекстом ошибки
       const uuid = await apiService.getUuid(tokens.access_token);
+      
+      // Получение init_tokens с дополнительным контекстом ошибки
       const initTokens = await apiService.getInitTokens(uuid, tokens.access_token);
-      results.push({
+      
+      return {
         email: user.email,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         uuid,
         initTokens
-      });
-    } catch (err: any) {
-      results.push({
-        email: user.email,
-        error: err.message
-      });
+      };
+    } catch (error: any) {
+      return { email: user.email, error: error.message || "Неизвестная ошибка" };
     }
-  }
-  return results;
+  });
+
+  // Дожидаемся завершения всех запросов
+  return await Promise.all(userPromises);
 }

@@ -3,6 +3,7 @@ import { Elysia } from 'elysia';
 import { exportAllHandler } from './ExportAllHandler';
 import { processAllUsers } from './ ProcessAllHandler';
 
+
 const app = new Elysia();
 
 // Обработчик preflight-запросов для любых путей
@@ -21,17 +22,15 @@ app.post('/api/processAll', async ({ body }) => {
   try {
     const parsedBody = await body;
     if (!Array.isArray(parsedBody)) {
-      return new Response(
-        JSON.stringify({ error: "Ожидается массив объектов" }),
-        { 
-          status: 400, 
-          headers: { 
-            "Content-Type": "application/json", 
-            "Access-Control-Allow-Origin": "*" 
-          } 
+      return new Response(JSON.stringify({ error: "Ожидается массив объектов" }), {
+        status: 400,
+        headers: { 
+          "Content-Type": "application/json", 
+          "Access-Control-Allow-Origin": "*" 
         }
-      );
+      });
     }
+    // processAllUsers возвращает для каждого пользователя либо объект с результатами, либо с полем error.
     const results = await processAllUsers(parsedBody);
     return new Response(JSON.stringify(results), {
       headers: { 
@@ -40,6 +39,7 @@ app.post('/api/processAll', async ({ body }) => {
       }
     });
   } catch (error: any) {
+    console.error("Ошибка в /api/processAll:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 
@@ -70,22 +70,16 @@ app.post("/api/export", async ({ body }) => {
       }
     });
   } catch (error: any) {
-    console.error("Ошибка в API:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }
+    console.error("Ошибка в /api/export:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
       }
-    );
+    });
   }
 });
 
-
-
 app.listen(3000);
-
 console.log("Server running on http://localhost:3000");
