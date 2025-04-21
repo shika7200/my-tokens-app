@@ -13,6 +13,32 @@ import {
  */
 export class ApiService {
   /**
+   * Универсальный обработчик ошибок axios.
+   * @param error — пойманная ошибка
+   * @param context — описание контекста (например, "Ошибка авторизации")
+   * @throws Error с подробным сообщением
+   */
+  private handleRequestError(error: any, context: string): never {
+    let errorMsg = `${context}: `;
+
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        // Подробная информация из ответа сервера
+        errorMsg += `Статус ${error.response.status} – ${error.response.data?.message || JSON.stringify(error.response.data)}`;
+      } else if (error.request) {
+        // Ошибка при отправке запроса (нет ответа)
+        errorMsg += 'Нет ответа от сервера';
+      } else {
+        // Другие ошибки
+        errorMsg += error.message;
+      }
+    } else {
+      errorMsg += 'Неизвестная ошибка';
+    }
+    throw new Error(errorMsg);
+  }
+
+  /**
    * Выполняет авторизацию пользователя.
    *
    * @param email - Электронная почта пользователя.
@@ -32,11 +58,16 @@ export class ApiService {
         os: "Windows 10"
       }
     };
-    const response = await axios.post('https://api.ficto.ru/client/auth/login', loginData);
-    return {
-      access_token: response.data.access_token,
-      refresh_token: response.data.refresh_token
-    };
+
+    try {
+      const response = await axios.post('https://api.ficto.ru/client/auth/login', loginData);
+      return {
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token
+      };
+    } catch (error) {
+      this.handleRequestError(error, 'Ошибка авторизации');
+    }
   }
 
   /**
@@ -44,20 +75,24 @@ export class ApiService {
    *
    * @param access_token - Токен доступа.
    * @returns UUID гранта.
-   * @throws Error, если UUID не найден.
+   * @throws Error, если UUID не найден или произошла ошибка запроса.
    */
   async getUuid(access_token: string): Promise<string> {
-    const response = await axios.get('https://api.ficto.ru/client/grants?avalible=true&page=1', {
-      headers: { Authorization: `Bearer ${access_token}` }
-    });
-    let uuid = "";
-    if (response.data && Array.isArray(response.data.items) && response.data.items.length > 0) {
-      uuid = response.data.items[0].uuid;
+    try {
+      const response = await axios.get('https://api.ficto.ru/client/grants?avalible=true&page=1', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      let uuid = "";
+      if (response.data && Array.isArray(response.data.items) && response.data.items.length > 0) {
+        uuid = response.data.items[0].uuid;
+      }
+      if (!uuid) {
+        throw new Error("UUID не найден");
+      }
+      return uuid;
+    } catch (error) {
+      this.handleRequestError(error, 'Ошибка получения UUID');
     }
-    if (!uuid) {
-      throw new Error("UUID не найден");
-    }
-    return uuid;
   }
 
   /**
@@ -70,18 +105,26 @@ export class ApiService {
    */
   async getInitTokens(uuid: string, access_token: string): Promise<string[]> {
     const initTokens: string[] = [];
-    for (let i = 2; i <= 20; i++) {
-      const response = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
-        headers: { Authorization: `Bearer ${access_token}` }
-      });
-      const tokenValue = response.data?.item?.init_token;
-      if (!tokenValue) {
-        throw new Error(`Init token не найден для запроса ${i}`);
+
+    try {
+      for (let i = 2; i <= 20; i++) {
+        const response = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
+          headers: { Authorization: `Bearer ${access_token}` }
+        });
+        const tokenValue = response.data?.item?.init_token;
+        if (!tokenValue) {
+          // Генерируем и выбрасываем ошибку с указанием номера запроса
+          throw new Error(`Init token не найден для запроса ${i}`);
+        }
+        initTokens.push(tokenValue);
       }
-      initTokens.push(tokenValue);
+      return initTokens;
+    } catch (error) {
+      this.handleRequestError(error, 'Ошибка получения init_tokens');
     }
-    return initTokens;
   }
+
+  // Аналогичным образом можно добавить обработку ошибок и в другие методы
 
   /**
    * Экспортирует данные таблицы в формате XLSX для одного запроса.
@@ -99,27 +142,33 @@ export class ApiService {
       separators: {}
     };
 
-    const response = await axios.post(url, data, {
-      headers: { 'L-Token': token },
-      responseType: 'arraybuffer'
-    });
-    return Buffer.from(response.data);
+    try {
+      const response = await axios.post(url, data, {
+        headers: { 'L-Token': token },
+        responseType: 'arraybuffer'
+      });
+      return Buffer.from(response.data);
+    } catch (error) {
+      this.handleRequestError(error, `Ошибка экспорта таблицы (panelId: ${panelId})`);
+    }
   }
 
   /**
    * Экспортирует XLSX файлы для каждого init_token.
-   * Для первого токена используется panel_id = 3293,
-   * а для остальных вычисляется: panel_id = 3253 + (index * 2)
    *
    * @param tokens Массив init_token.
    * @returns Массив XLSX файлов в формате Buffer.
    */
   async exportAllTables(tokens: string[]): Promise<Buffer[]> {
-    const exportPromises = tokens.map((token, index) => {
-      const panelId = index === 0 ? 3293 : (3253 + (index - 1) * 2);
-      return this.exportTable(panelId, token);
-    });
-    return await Promise.all(exportPromises);
+    try {
+      const exportPromises = tokens.map((token, index) => {
+        const panelId = index === 0 ? 3293 : (3253 + (index - 1) * 2);
+        return this.exportTable(panelId, token);
+      });
+      return await Promise.all(exportPromises);
+    } catch (error) {
+      this.handleRequestError(error, 'Ошибка экспорта всех таблиц');
+    }
   }
   /**
    * Сохраняет данные таблицы для любой секции.
@@ -201,10 +250,15 @@ async saveData(
   async getDocumentStatus(panelId: number, token: string): Promise<DocumentResponse> {
     const url = 'https://api.ficto.ru/client/layout/documents/299/status';
     const data = { params: { panel_id: panelId }, fixation_params: {} };
-    const response = await axios.post(url, data, {
-      headers: { 'L-Token': token }
-    });
-    return response.data;
+
+    try {
+      const response = await axios.post(url, data, {
+        headers: { 'L-Token': token }
+      });
+      return response.data;
+    } catch (error) {
+      this.handleRequestError(error, 'Ошибка проверки статуса документа');
+    }
   }
 
   /**
@@ -218,15 +272,14 @@ async saveData(
   async cancelDocumentLock(buildId: number, panelId: number, token: string): Promise<{ status: boolean }> {
     const url = 'https://api.ficto.ru/client/layout/documents/299/cancel';
     const data = { params: { build_id: buildId, panel_id: panelId }, fixation_params: {} };
-    const response = await axios.post(url, data, {
-      headers: { 'L-Token': token }
-    });
-    return response.data;
+
+    try {
+      const response = await axios.post(url, data, {
+        headers: { 'L-Token': token }
+      });
+      return response.data;
+    } catch (error) {
+      this.handleRequestError(error, `Ошибка отмены блокировки документа (buildId: ${buildId}, panelId: ${panelId})`);
+    }
   }
-
-
-
-
-
-  
 }

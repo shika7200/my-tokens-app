@@ -3,9 +3,17 @@ import { useProcessFile } from './useProcessFile';
 import './App.css';
 
 const App: React.FC = () => {
-  const { isProcessing, processedCount, totalCount, errorEmails, fileInputRef, handleFileSelect, handleDrop } = useProcessFile();
+  const { 
+    isProcessing, 
+    processedCount, 
+    totalCount, 
+    errorResults, // предполагается, что ошибки теперь приходят в виде [{ email, error }, ...]
+    fileInputRef, 
+    handleFileSelect, 
+    handleDrop 
+  } = useProcessFile();
   
-  // Массив для хранения почт и паролей
+  // Массив для хранения почт и паролей для экспорта
   const [credentials, setCredentials] = useState<{ email: string; password: string }[]>([]);
 
   const handleDownload = async () => {
@@ -13,11 +21,12 @@ const App: React.FC = () => {
       const response = await fetch('http://localhost:3000/api/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials) // Отправляем массив учетных данных
+        body: JSON.stringify(credentials)
       });
   
       if (!response.ok) {
-        throw new Error(`Ошибка запроса: ${response.statusText}`);
+        const err = await response.json();
+        throw new Error(err.error || `Ошибка запроса: ${response.statusText}`);
       }
   
       // Извлекаем имя файла из заголовка Content-Disposition
@@ -151,12 +160,15 @@ const App: React.FC = () => {
         </p>
       </div>
 
-      {errorEmails.length > 0 && !isProcessing && (
+      {/* Вывод детальных ошибок для каждого аккаунта */}
+      {errorResults.length > 0 && !isProcessing && (
         <div className="error-container">
-          <p>Не удалось обработать следующие аккаунты:</p>
+          <p>Ошибки при обработке следующих аккаунтов:</p>
           <ul>
-            {errorEmails.map((email) => (
-              <li key={email}>{email || '(неизвестный email)'}</li>
+            {errorResults.map((errObj, index) => (
+              <li key={index}>
+                {errObj.email || '(неизвестный email)'}: {errObj.error}
+              </li>
             ))}
           </ul>
         </div>

@@ -11,13 +11,13 @@ import { processFile, ProcessFileCallbacks } from './processFile';
  *   - {@link isProcessing} {boolean} - Флаг, указывающий, идёт ли обработка файла.
  *   - {@link processedCount} {number} - Количество обработанных строк.
  *   - {@link totalCount} {number} - Общее количество строк для обработки.
- *   - {@link errorEmails} {string[]} - Массив email-адресов, для которых произошли ошибки.
+ *   - {@link errorResults} {Array<{ email: string; error: string }>} - Массив объектов с ошибками, где для каждого элемента указывается email и сообщение ошибки.
  *   - {@link fileInputRef} {React.RefObject<HTMLInputElement>} - Ref для input-элемента выбора файла.
  *   - {@link handleFileSelect} {(e: ChangeEvent<HTMLInputElement>) => Promise<void>} - Обработчик события выбора файла.
  *   - {@link handleDrop} {(e: DragEvent<HTMLDivElement>) => Promise<void>} - Обработчик события перетаскивания файла.
  */
 export function useProcessFile() {
-  /**
+/**
    * Флаг, указывающий, идёт ли обработка файла.
    * @type {boolean}
    */
@@ -39,9 +39,9 @@ export function useProcessFile() {
    * Массив email-адресов, для которых произошли ошибки во время обработки.
    * @type {string[]}
    */
-  const [errorEmails, setErrorEmails] = useState<string[]>([]);
+  const [errorResults, setErrorResults] = useState<{ email: string; error: string }[]>([]);
   
-  /**
+ /**
    * Ссылка на input-элемент выбора файла.
    * @type {React.RefObject<HTMLInputElement>}
    */
@@ -60,7 +60,7 @@ export function useProcessFile() {
     }
   };
 
-  /**
+ /**
    * Обработчик события перетаскивания файла (drag-and-drop).
    *
    * @param {DragEvent<HTMLDivElement>} e - Событие drop.
@@ -79,7 +79,7 @@ export function useProcessFile() {
     }
   };
 
-  /**
+ /**
    * Обрабатывает выбранный файл: сбрасывает состояния, вызывает processFile с нужными колбэками.
    *
    * @param {File} file - Файл в формате Excel.
@@ -88,12 +88,14 @@ export function useProcessFile() {
   const handleProcess = async (file: File) => {
     setIsProcessing(true);
     setProcessedCount(0);
-    setErrorEmails([]);
+    setErrorResults([]);
     try {
       const callbacks: ProcessFileCallbacks = {
         onSetTotal: setTotalCount,
-        onProgress: (processed) => setProcessedCount(processed),
-        onError: (email) => setErrorEmails((prev) => [...prev, email])
+        onProgress: (processed: number) => setProcessedCount(processed),
+        // При ошибке сохраняем объект с email и сообщением (если сообщение не передано, подставляем значение по умолчанию)
+        onError: (email: string, errorMsg?: string) =>
+          setErrorResults((prev) => [...prev, { email, error: errorMsg || 'Ошибка обработки данных' }])
       };
       await processFile(file, callbacks);
     } catch (e: any) {
@@ -108,7 +110,7 @@ export function useProcessFile() {
     isProcessing,       // Флаг обработки
     processedCount,     // Количество обработанных строк
     totalCount,         // Общее количество строк
-    errorEmails,        // Список email с ошибками
+    errorResults,       // Массив ошибок: каждый элемент имеет email и сообщение ошибки
     fileInputRef,       // Ref на input выбора файла
     handleFileSelect,   // Обработчик выбора файла
     handleDrop          // Обработчик drag-and-drop
