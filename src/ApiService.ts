@@ -18,6 +18,7 @@ export class ApiService {
    * @param context — описание контекста (например, "Ошибка авторизации")
    * @throws Error с подробным сообщением
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleRequestError(error: any, context: string): never {
     let errorMsg = `${context}: `;
 
@@ -107,7 +108,7 @@ export class ApiService {
     const initTokens: string[] = [];
 
     try {
-      for (let i = 2; i <= 20; i++) {
+      for (let i = 2; i <= 21; i++) {
         const response = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
           headers: { Authorization: `Bearer ${access_token}` }
         });
@@ -239,47 +240,81 @@ async saveData(
   }
 }
 
-
-  /**
-   * Проверяет статус документа и формирует документ (отмена блокировки).
-   *
-   * @param panelId - Идентификатор панели документа.
-   * @param token - Токен авторизации (init_token).
-   * @returns Объект с информацией о документе, включая build_id.
-   */
-  async getDocumentStatus(panelId: number, token: string): Promise<DocumentResponse> {
-    const url = 'https://api.ficto.ru/client/layout/documents/299/status';
-    const data = { params: { panel_id: panelId }, fixation_params: {} };
-
-    try {
-      const response = await axios.post(url, data, {
-        headers: { 'L-Token': token }
-      });
-      return response.data;
-    } catch (error) {
-      this.handleRequestError(error, 'Ошибка проверки статуса документа');
-    }
+/**
+ * Проверяет статус документа (заблокирован или нет).
+ *
+ * @param panelId - Идентификатор панели документа.
+ * @param token - init_token для авторизации.
+ * @returns Promise с DocumentResponse (включая build_id и флаги).
+ */
+async getDocumentStatus(
+  token: string
+): Promise<DocumentResponse> {
+  // Фиксированный endpoint
+  const url = 'https://api.ficto.ru/client/layout/documents/299/status'
+  const data = { params: { panel_id: 3289 }, fixation_params: {} }
+  const headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'Content-Type': 'application/json',
+    'L-Token': token
   }
+
+  console.log('--- getDocumentStatus: Request Headers ---')
+  console.dir(headers, { depth: null })
+  console.log('--- getDocumentStatus: Request Body ---', JSON.stringify(data, null, 2))
+
+  try {
+    const resp = await axios.post<DocumentResponse>(url, data, { headers })
+    console.log('--- getDocumentStatus: Response Status ---', resp.status)
+    console.log('--- getDocumentStatus: Response Body ---', resp.data)
+    return resp.data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    console.error('--- getDocumentStatus: Error ---', err.response?.status, err.response?.data)
+    this.handleRequestError(err, 'Ошибка проверки статуса документа')
+  }
+}
 
   /**
    * Отменяет блокировку документа.
    *
-   * @param buildId - Идентификатор сборки документа.
+   * @param buildId - Идентификатор сборки (build_id) из ответа статуса.
    * @param panelId - Идентификатор панели документа.
-   * @param token - Токен авторизации (init_token).
-   * @returns Ответ сервера в формате JSON.
+   * @param token - init_token для авторизации.
+   * @returns Promise<{status: boolean}>
    */
-  async cancelDocumentLock(buildId: number, panelId: number, token: string): Promise<{ status: boolean }> {
-    const url = 'https://api.ficto.ru/client/layout/documents/299/cancel';
-    const data = { params: { build_id: buildId, panel_id: panelId }, fixation_params: {} };
+  async cancelDocumentLock(
+    buildId: number,
+    panelId: number,
+    token: string
+  ): Promise<{ status: boolean }> {
+    const url = `https://api.ficto.ru/client/layout/documents/299/cancel`
+    const data = {
+      params: { build_id: buildId, panel_id: panelId },
+      fixation_params: {}
+    }
+    const headers = {
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
+      'L-Token': token
+    }
+
+    console.log('--- cancelDocumentLock: Request Headers ---')
+    console.dir(headers, { depth: null })
+    console.log('--- cancelDocumentLock: Request Body ---', JSON.stringify(data, null, 2))
 
     try {
-      const response = await axios.post(url, data, {
-        headers: { 'L-Token': token }
-      });
-      return response.data;
-    } catch (error) {
-      this.handleRequestError(error, `Ошибка отмены блокировки документа (buildId: ${buildId}, panelId: ${panelId})`);
+      const resp = await axios.post<{ status: boolean }>(url, data, { headers })
+      console.log('--- cancelDocumentLock: Response Status ---', resp.status)
+      console.log('--- cancelDocumentLock: Response Body ---', resp.data)
+      return resp.data  
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error('--- cancelDocumentLock: Error ---', err.response?.status, err.response?.data)
+      this.handleRequestError(
+        err,
+        `Ошибка отмены блокировки документа (buildId: ${buildId}, panelId: ${panelId})`
+      )
     }
   }
 }

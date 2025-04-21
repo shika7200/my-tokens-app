@@ -98,6 +98,7 @@ export function useProcessFile() {
           setErrorResults((prev) => [...prev, { email, error: errorMsg || 'Ошибка обработки данных' }])
       };
       await processFile(file, callbacks);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       console.error("Ошибка при обработке файла:", e);
       alert("Произошла ошибка при обработке файла. Проверьте консоль для деталей.");

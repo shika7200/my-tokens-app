@@ -1387,32 +1387,63 @@ async function main(
     throw new Error(`Ожидалось минимум 2 initTokens, получили ${initTokens.length}`)
   }
 
+  // Используем последний токен только для проверки/снятия блокировки документа
+  const statusToken = initTokens[initTokens.length - 1]
+  console.log(`▶ Проверяем статус документа с init_token[last]: ${statusToken.slice(0, 10)}…`)
+
+  // Жёстко фиксированный panel_id для статуса
+  const fixedPanelId = 3289
+  const docStatus = await api.getDocumentStatus(statusToken)
+  if (docStatus.document.disabled_complite) {
+    console.log(
+      `Документ panel_id=${fixedPanelId} действительно заблокирован ` +
+      `(disabled_complite=true). Build ID=${docStatus.document.build_id}. ` +
+      `Отменяем фиксацию…`
+    )
+    await api.cancelDocumentLock(
+      docStatus.document.build_id,
+      fixedPanelId,
+      statusToken
+    )
+    console.log('Разблокировка выполнена.')
+  } else {
+    console.log(
+      `Документ panel_id=${fixedPanelId} не нуждается в разблокировке ` +
+      `(disabled_complite=false).`
+    )
+  }
+
   // Список ключей секций в нужном порядке
   const sectionKeys = Object.keys(dataMapping) as Array<keyof typeof dataMapping>
 
-  // Цикл по токенам и секциям параллельно: второй токен — первый раздел, третий токен — второй раздел и т.д.
-  for (let idx = 1; idx < initTokens.length && idx - 1 < sectionKeys.length; idx++) {
+  // Цикл: второй токен обрабатывает первую секцию и т.д., не затрагивая последний токен
+  for (
+    let idx = 1;
+    idx < initTokens.length - 1 && idx - 1 < sectionKeys.length;
+    idx++
+  ) {
     const token = initTokens[idx]
     const sectionKey = sectionKeys[idx - 1]
 
-    console.log(`\n▶ Используем init_token[${idx}]: ${token.slice(0, 10)}…`)
-    console.log(`--- Тестируем раздел: ${sectionKey} ---`)
+    console.log(`\n▶ Сохраняем раздел ${sectionKey} с init_token[${idx}]: ${token.slice(0, 10)}…`)
 
-    const requestData = createSectionRequest(sectionKey, inputJson) as SaveDataRequestGeneric
+    const requestData = createSectionRequest(
+      sectionKey,
+      inputJson
+    ) as SaveDataRequestGeneric
+
     try {
       const res = await api.saveData(token, requestData)
       console.log(`✓ ${sectionKey}:`, res)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-    //  console.error(`✗ ${sectionKey}:`, err)
-      // При ошибке можно продолжить к следующему токену/разделу
+      console.error(`✗ ${sectionKey}:`, err)
     }
   }
 }
 
 // Пример вызова
 main(
-inputJson,
+ inputJson,
   'arshellen@gmail.com',
   '12345678'
 )
