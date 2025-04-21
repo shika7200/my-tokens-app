@@ -7,8 +7,8 @@ import { ApiService } from "./ApiService";
 
 const inputJson: InputJson = {
     "doxcellLogin" : "48631862",
-    "fictoLogin" : "marinevz@yandex.ru",
-    "fictoPass" : "35irjkf35",
+    "fictoLogin" : "arshellen@gmail.com",
+    "fictoPass" : "12345678",
     "documentId" : "2396726",
     "factors" : {
       "rpreport17s5r14c5_0" : "936",
@@ -1370,13 +1370,12 @@ async function main(inputJson: InputJson, email: string, password: string) {
   }
 }
 */
-
-async function main(
-  inputJson: InputJson,
-  email: string,
-  password: string
-) {
+async function main(inputJson: InputJson) {
   const api = new ApiService()
+
+  // Извлекаем логин и пароль из inputJson
+  const email = inputJson.fictoLogin
+  const password = inputJson.fictoPass
 
   // Получаем init-токены
   const { access_token } = await api.login(email, password)
@@ -1393,24 +1392,15 @@ async function main(
 
   // Жёстко фиксированный panel_id для статуса
   const fixedPanelId = 3289
-  const docStatus = await api.getDocumentStatus(statusToken)
+  const docStatus = await api.getDocumentStatus( statusToken)
   if (docStatus.document.disabled_complite) {
     console.log(
-      `Документ panel_id=${fixedPanelId} действительно заблокирован ` +
-      `(disabled_complite=true). Build ID=${docStatus.document.build_id}. ` +
-      `Отменяем фиксацию…`
+      `Документ panel_id=${fixedPanelId} заблокирован, выполняем разблокировку (build_id=${docStatus.document.build_id})`
     )
-    await api.cancelDocumentLock(
-      docStatus.document.build_id,
-      fixedPanelId,
-      statusToken
-    )
+    await api.cancelDocumentLock(docStatus.document.build_id, fixedPanelId, statusToken)
     console.log('Разблокировка выполнена.')
   } else {
-    console.log(
-      `Документ panel_id=${fixedPanelId} не нуждается в разблокировке ` +
-      `(disabled_complite=false).`
-    )
+    console.log(`Документ panel_id=${fixedPanelId} уже разблокирован.`)
   }
 
   // Список ключей секций в нужном порядке
@@ -1443,7 +1433,5 @@ async function main(
 
 // Пример вызова
 main(
- inputJson,
-  'arshellen@gmail.com',
-  '12345678'
+ inputJson
 )
