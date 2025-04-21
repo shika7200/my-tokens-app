@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.74.4",
     "axios": "^1.8.4",
     "buffer": "^6.0.3",
     "elysia": "^1.2.25",

@@ -243,7 +243,6 @@ async saveData(
 /**
  * Проверяет статус документа (заблокирован или нет).
  *
- * @param panelId - Идентификатор панели документа.
  * @param token - init_token для авторизации.
  * @returns Promise с DocumentResponse (включая build_id и флаги).
  */
