@@ -1,8 +1,9 @@
-import { InputJson } from "./apiService_types";
+import { InputJson, SaveDataRequestGeneric,  } from "./apiService_types";
 
-import { writeFileSync } from 'fs';
 import { createSectionRequest } from "./parse_Doxcelljson";
 import { dataMapping } from "./mapping";
+import { ApiService } from "./ApiService";
+
 
 const inputJson: InputJson = {
     "doxcellLogin" : "48631862",
@@ -1330,7 +1331,7 @@ const inputJson: InputJson = {
       "rpreport17s1r10c8_0" : "0"
     }
   };
-  
+/** 
 // Генерация отдельных запросов по каждой секции
 const sectionKeys = Object.keys(dataMapping) as (keyof typeof dataMapping)[];
 
@@ -1339,3 +1340,79 @@ sectionKeys.forEach(sectionKey => {
   const fileName = `${sectionKey.toLowerCase()}_request.json`;
   writeFileSync(fileName, JSON.stringify(requestData, null, 2));
 });
+*/
+
+/*
+async function main(inputJson: InputJson, email: string, password: string) {
+  const api = new ApiService()
+  const { access_token } = await api.login(email, password)
+  const uuid = await api.getUuid(access_token)
+  const initTokens = await api.getInitTokens(uuid, access_token)
+
+  const sectionKeys = Object.keys(dataMapping) as Array<keyof typeof dataMapping>
+
+  // пропускаем первый токен
+  for (let i = 1; i < initTokens.length; i++) {
+    const token = initTokens[i]
+    console.log(`\n=== init_token #${i + 1} ===`)
+
+    for (const key of sectionKeys) {
+      // data: SaveDataRequestGeneric
+      const data = createSectionRequest(key, inputJson) as SaveDataRequestGeneric
+
+      try {
+        const res = await api.saveData(token, data)
+        console.log(`✓ ${key}:`, res)
+      } catch (e) {
+        console.error(`✗ ${key}:`, e)
+      }
+    }
+  }
+}
+*/
+
+async function main(
+  inputJson: InputJson,
+  email: string,
+  password: string
+) {
+  const api = new ApiService()
+
+  // Получаем init-токены
+  const { access_token } = await api.login(email, password)
+  const uuid = await api.getUuid(access_token)
+  const initTokens = await api.getInitTokens(uuid, access_token)
+
+  if (initTokens.length < 2) {
+    throw new Error(`Ожидалось минимум 2 initTokens, получили ${initTokens.length}`)
+  }
+
+  // Список ключей секций в нужном порядке
+  const sectionKeys = Object.keys(dataMapping) as Array<keyof typeof dataMapping>
+
+  // Цикл по токенам и секциям параллельно: второй токен — первый раздел, третий токен — второй раздел и т.д.
+  for (let idx = 1; idx < initTokens.length && idx - 1 < sectionKeys.length; idx++) {
+    const token = initTokens[idx]
+    const sectionKey = sectionKeys[idx - 1]
+
+    console.log(`\n▶ Используем init_token[${idx}]: ${token.slice(0, 10)}…`)
+    console.log(`--- Тестируем раздел: ${sectionKey} ---`)
+
+    const requestData = createSectionRequest(sectionKey, inputJson) as SaveDataRequestGeneric
+    try {
+      const res = await api.saveData(token, requestData)
+      console.log(`✓ ${sectionKey}:`, res)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) {
+    //  console.error(`✗ ${sectionKey}:`, err)
+      // При ошибке можно продолжить к следующему токену/разделу
+    }
+  }
+}
+
+// Пример вызова
+main(
+inputJson,
+  'arshellen@gmail.com',
+  '12345678'
+)

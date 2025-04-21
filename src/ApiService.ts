@@ -1,10 +1,11 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig,} from 'axios';
 import { Buffer } from 'buffer';
 import {
-  SaveDataSection,
-  SaveDataMapping,
-  SaveDataResponse,
+
   DocumentResponse,
+  SaveDataRequestGeneric,
+  SaveDataResponse,
+
 } from './apiService_types';
 
 /**
@@ -120,41 +121,75 @@ export class ApiService {
     });
     return await Promise.all(exportPromises);
   }
-
   /**
-   * Сохраняет данные таблицы для заданного раздела.
+   * Сохраняет данные таблицы для любой секции.
    *
-   * Выбор варианта тела запроса осуществляется посредством enum SaveDataSection,
-   * а типизация данных гарантируется с помощью маппинга SaveDataMapping.
-   *
-   * Метод преобразует переданный объект, где panel_id задан один раз,
-   * в требуемую API-структуру с дублированием panel_id в params и в каждой строке таблицы.
-   *
-   * @param _section - Раздел для сохранения данных (используется только для типизации).
-   * @param token - Токен авторизации (init_token).
-   * @param data - Объект данных для сохранения, соответствующий выбранному разделу.
-   * @returns Ответ сервера в формате JSON, например: { status: true }.
+   * @param token - init_token для авторизации.
+   * @param data - Объект вида { panel_id: number, table: Array<{ row_id, type_id, columns }> }.
    */
-  async saveData<K extends SaveDataSection>(
-    _section: K,
-    token: string,
-    data: SaveDataMapping[K]
-  ): Promise<SaveDataResponse> {
-    const url = 'https://api.ficto.ru/client/layout/table/save-data';
-    // Определяем тип элемента массива table
-    type DataRow = typeof data.table[number];
-  
-    const payload = {
-      params: { panel_id: data.panel_id },
-      table: data.table.map((row: DataRow) => ({ ...row, panel_id: data.panel_id })),
-      panel_id: data.panel_id
-    };
-    const response = await axios.post(url, payload, {
-      headers: { 'L-Token': token }
-    });
-    return response.data;
+// после упрощения
+async saveData(
+  token: string,
+  data: SaveDataRequestGeneric
+): Promise<SaveDataResponse> {
+  const url = 'https://api.ficto.ru/client/layout/table/save-data'
+
+  // Тема заголовков — копия из вашего Bun-скрипта
+  const headers: Record<string,string> = {
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Encoding': 'gzip, deflate, br, zstd',
+    'Accept-Language': 'ru-RU,ru;q=0.9',
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/json',
+    'L-Token': token,
+    'Host': 'api.ficto.ru',
+    'Origin': 'https://client.ficto.ru',
+    'Referer': 'https://client.ficto.ru/',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
+    'User-Agent':
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+      'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+      'Chrome/134.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Content-Length': String(Buffer.byteLength(JSON.stringify(data), 'utf8')),
   }
-  
+
+  // Логируем перед запросом
+  console.log('--- saveData: Request Headers ---')
+  console.dir(headers, { depth: null })
+  console.log('--- saveData: Request Body ---')
+  console.log(JSON.stringify(data, null, 2))
+
+  const config: AxiosRequestConfig = {
+    headers,
+    transformRequest: [(body) => JSON.stringify(body)],
+    decompress: false,
+  }
+
+  try {
+    const resp = await axios.post<SaveDataResponse>(url, data, config)
+
+    // Логируем ответ
+    console.log('--- saveData: Response Status ---', resp.status)
+    console.log('--- saveData: Response Body ---', resp.data)
+
+    return resp.data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    if (axios.isAxiosError(err)) {
+      console.error('--- saveData: Error Status ---', err.response?.status)
+      console.error('--- saveData: Error Body ---', err.response?.data)
+    } else {
+      console.error('--- saveData: Unexpected Error ---', err)
+    }
+    throw err
+  }
+}
+
 
   /**
    * Проверяет статус документа и формирует документ (отмена блокировки).
