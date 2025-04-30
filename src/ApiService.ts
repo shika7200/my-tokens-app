@@ -316,4 +316,47 @@ async getDocumentStatus(
       )
     }
   }
+
+
+  /**
+   * Отзывает подпись документа.
+   *
+   * @param buildId — идентификатор сборки (build_id) из ответа getDocumentStatus
+   * @param panelId — идентификатор панели документа
+   * @param token — init_token для авторизации
+   * @returns Promise<{ status: boolean }>
+   */
+  async revokeSignature(
+    buildId: number,
+    panelId: number,
+    token: string
+  ): Promise<{ status: boolean }> {
+    const url = 'https://api.ficto.ru/client/layout/documents/299/revoke';
+    const data = {
+      params: { build_id: buildId, panel_id: panelId },
+      fixation_params: {}
+    };
+    const headers: Record<string,string> = {
+      'Accept': 'application/json, text/plain, */*',
+      'Content-Type': 'application/json',
+      'L-Token': token
+    };
+
+    console.log('--- revokeSignature: Request Headers ---');
+    console.dir(headers, { depth: null });
+    console.log('--- revokeSignature: Request Body ---', JSON.stringify(data, null, 2));
+
+    try {
+      const resp = await axios.post<{ status: boolean }>(url, data, { headers });
+      console.log('--- revokeSignature: Response Status ---', resp.status);
+      console.log('--- revokeSignature: Response Body ---', resp.data);
+      return resp.data;
+    } catch (err: any) {
+      console.error('--- revokeSignature: Error ---', err.response?.status, err.response?.data);
+      this.handleRequestError(
+        err,
+        `Ошибка отзыва подписи документа (buildId: ${buildId}, panelId: ${panelId})`
+      );
+    }
+  }
 }
