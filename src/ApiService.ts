@@ -108,7 +108,7 @@ export class ApiService {
     const initTokens: string[] = [];
 
     try {
-      for (let i = 2; i <= 21; i++) {
+      for (let i = 1; i <= 21; i++) {
         const response = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
           headers: { Authorization: `Bearer ${access_token}` }
         });
