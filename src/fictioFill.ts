@@ -13,7 +13,7 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
   const email = inputJson.fictoLogin
   const password = inputJson.fictoPass
 
-  // Получаем init-токены
+  // Авторизация и получение init-токенов
   const { access_token } = await api.login(email, password)
   const uuid = await api.getUuid(access_token)
   const initTokens = await api.getInitTokens(uuid, access_token)
@@ -22,11 +22,12 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
     throw new Error(`Ожидалось минимум 2 initTokens, получили ${initTokens.length}`)
   }
 
-  // Проверяем и снимаем блокировку документа (фиксированный panel_id = 3289)
+  // Последний токен — для операций со статусом документа
   const statusToken = initTokens[initTokens.length - 1]
   const fixedPanelId = 3289
-  const docStatus = await api.getDocumentStatus(statusToken)
 
+  // Проверяем статус документа и снимаем блокировку, если нужно
+  const docStatus = await api.getDocumentStatus(statusToken)
   if (docStatus.document.disabled_complite) {
     try {
       await api.cancelDocumentLock(
@@ -36,7 +37,6 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
       )
     } catch (err: any) {
       const msg = err.message || ""
-      // Если статус 409 и запрещено изменение статуса — документ уже подписан
       if (
         msg.includes("Статус 409") &&
         msg.includes("запрещено изменение статуса отчета")
@@ -53,7 +53,7 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
     }
   }
 
-  // Заполняем каждую секцию по порядку: токен #2 -> SECTION_12, токен #3 -> SECTION_13 и т.д.
+  // Заполняем каждую секцию токенами #2…#N-1
   const sectionKeys = Object.keys(dataMapping) as Array<keyof typeof dataMapping>
   for (
     let idx = 1;
@@ -66,8 +66,28 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
       sectionKey,
       inputJson
     ) as SaveDataRequestGeneric
+
     await api.saveData(token, requestData)
   }
+
+  // Проверяем документ на ошибки (documentId=299, panelId=3289, userTimezone=7)
+  const checkResult = await api.checkErrors(
+    299,
+    fixedPanelId,
+    7,
+    statusToken
+  )
+  if (Array.isArray(checkResult.errors) && checkResult.errors.length > 0) {
+    console.error("Обнаружены ошибки при проверке документа:", checkResult.errors)
+    throw new Error("Обнаружены ошибки в документе — завершение отменено")
+  }
+
+  console.log("Ошибок не найдено, выполняем комплит…")
+  await api.completeDocument(
+    docStatus.document.build_id,
+    fixedPanelId,
+    statusToken
+  )
 
   return { success: true }
 }

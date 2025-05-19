@@ -1,12 +1,10 @@
-import axios, { AxiosRequestConfig,} from 'axios';
-import { Buffer } from 'buffer';
+import axios, { AxiosRequestConfig } from "axios";
+import { Buffer } from "buffer";
 import {
-
   DocumentResponse,
   SaveDataRequestGeneric,
   SaveDataResponse,
-
-} from './apiService_types';
+} from "./apiService_types";
 
 /**
  * Сервис для работы с API Ficto.
@@ -25,16 +23,18 @@ export class ApiService {
     if (axios.isAxiosError(error)) {
       if (error.response) {
         // Подробная информация из ответа сервера
-        errorMsg += `Статус ${error.response.status} – ${error.response.data?.message || JSON.stringify(error.response.data)}`;
+        errorMsg += `Статус ${error.response.status} – ${
+          error.response.data?.message || JSON.stringify(error.response.data)
+        }`;
       } else if (error.request) {
         // Ошибка при отправке запроса (нет ответа)
-        errorMsg += 'Нет ответа от сервера';
+        errorMsg += "Нет ответа от сервера";
       } else {
         // Другие ошибки
         errorMsg += error.message;
       }
     } else {
-      errorMsg += 'Неизвестная ошибка';
+      errorMsg += "Неизвестная ошибка";
     }
     throw new Error(errorMsg);
   }
@@ -46,7 +46,10 @@ export class ApiService {
    * @param password - Пароль пользователя.
    * @returns Объект с access_token и refresh_token.
    */
-  async login(email: string, password: string): Promise<{ access_token: string; refresh_token: string }> {
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ access_token: string; refresh_token: string }> {
     const loginData = {
       email,
       password,
@@ -56,18 +59,21 @@ export class ApiService {
         version: "134.0.0",
         versionNumber: 134,
         mobile: false,
-        os: "Windows 10"
-      }
+        os: "Windows 10",
+      },
     };
 
     try {
-      const response = await axios.post('https://api.ficto.ru/client/auth/login', loginData);
+      const response = await axios.post(
+        "https://api.ficto.ru/client/auth/login",
+        loginData
+      );
       return {
         access_token: response.data.access_token,
-        refresh_token: response.data.refresh_token
+        refresh_token: response.data.refresh_token,
       };
     } catch (error) {
-      this.handleRequestError(error, 'Ошибка авторизации');
+      this.handleRequestError(error, "Ошибка авторизации");
     }
   }
 
@@ -80,11 +86,18 @@ export class ApiService {
    */
   async getUuid(access_token: string): Promise<string> {
     try {
-      const response = await axios.get('https://api.ficto.ru/client/grants?avalible=true&page=1', {
-        headers: { Authorization: `Bearer ${access_token}` }
-      });
+      const response = await axios.get(
+        "https://api.ficto.ru/client/grants?avalible=true&page=1",
+        {
+          headers: { Authorization: `Bearer ${access_token}` },
+        }
+      );
       let uuid = "";
-      if (response.data && Array.isArray(response.data.items) && response.data.items.length > 0) {
+      if (
+        response.data &&
+        Array.isArray(response.data.items) &&
+        response.data.items.length > 0
+      ) {
         uuid = response.data.items[0].uuid;
       }
       if (!uuid) {
@@ -92,7 +105,7 @@ export class ApiService {
       }
       return uuid;
     } catch (error) {
-      this.handleRequestError(error, 'Ошибка получения UUID');
+      this.handleRequestError(error, "Ошибка получения UUID");
     }
   }
 
@@ -109,9 +122,12 @@ export class ApiService {
 
     try {
       for (let i = 2; i <= 21; i++) {
-        const response = await axios.get(`https://api.ficto.ru/client/workspace/${uuid}/${i}`, {
-          headers: { Authorization: `Bearer ${access_token}` }
-        });
+        const response = await axios.get(
+          `https://api.ficto.ru/client/workspace/${uuid}/${i}`,
+          {
+            headers: { Authorization: `Bearer ${access_token}` },
+          }
+        );
         const tokenValue = response.data?.item?.init_token;
         if (!tokenValue) {
           // Генерируем и выбрасываем ошибку с указанием номера запроса
@@ -121,7 +137,7 @@ export class ApiService {
       }
       return initTokens;
     } catch (error) {
-      this.handleRequestError(error, 'Ошибка получения init_tokens');
+      this.handleRequestError(error, "Ошибка получения init_tokens");
     }
   }
 
@@ -135,22 +151,25 @@ export class ApiService {
    * @returns XLSX-файл в виде Buffer.
    */
   async exportTable(panelId: number, token: string): Promise<Buffer> {
-    const url = 'https://api.ficto.ru/client/layout/table/export';
+    const url = "https://api.ficto.ru/client/layout/table/export";
     const data = {
       params: { panel_id: panelId },
       panel_id: panelId,
       token,
-      separators: {}
+      separators: {},
     };
 
     try {
       const response = await axios.post(url, data, {
-        headers: { 'L-Token': token },
-        responseType: 'arraybuffer'
+        headers: { "L-Token": token },
+        responseType: "arraybuffer",
       });
       return Buffer.from(response.data);
     } catch (error) {
-      this.handleRequestError(error, `Ошибка экспорта таблицы (panelId: ${panelId})`);
+      this.handleRequestError(
+        error,
+        `Ошибка экспорта таблицы (panelId: ${panelId})`
+      );
     }
   }
 
@@ -163,12 +182,12 @@ export class ApiService {
   async exportAllTables(tokens: string[]): Promise<Buffer[]> {
     try {
       const exportPromises = tokens.map((token, index) => {
-        const panelId = index === 0 ? 3293 : (3253 + (index - 1) * 2);
+        const panelId = index === 0 ? 3293 : 3253 + (index - 1) * 2;
         return this.exportTable(panelId, token);
       });
       return await Promise.all(exportPromises);
     } catch (error) {
-      this.handleRequestError(error, 'Ошибка экспорта всех таблиц');
+      this.handleRequestError(error, "Ошибка экспорта всех таблиц");
     }
   }
   /**
@@ -177,102 +196,108 @@ export class ApiService {
    * @param token - init_token для авторизации.
    * @param data - Объект вида { panel_id: number, table: Array<{ row_id, type_id, columns }> }.
    */
-// после упрощения
-async saveData(
-  token: string,
-  data: SaveDataRequestGeneric
-): Promise<SaveDataResponse> {
-  const url = 'https://api.ficto.ru/client/layout/table/save-data'
+  // после упрощения
+  async saveData(
+    token: string,
+    data: SaveDataRequestGeneric
+  ): Promise<SaveDataResponse> {
+    const url = "https://api.ficto.ru/client/layout/table/save-data";
 
-  // Тема заголовков — копия из вашего Bun-скрипта
-  const headers: Record<string,string> = {
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
-    'Accept-Language': 'ru-RU,ru;q=0.9',
-    'Connection': 'keep-alive',
-    'Content-Type': 'application/json',
-    'L-Token': token,
-    'Host': 'api.ficto.ru',
-    'Origin': 'https://client.ficto.ru',
-    'Referer': 'https://client.ficto.ru/',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-site',
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-      'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-      'Chrome/134.0.0.0 Safari/537.36',
-    'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'Content-Length': String(Buffer.byteLength(JSON.stringify(data), 'utf8')),
-  }
+    // Тема заголовков — копия из вашего Bun-скрипта
+    const headers: Record<string, string> = {
+      Accept: "application/json, text/plain, */*",
+      "Accept-Encoding": "gzip, deflate, br, zstd",
+      "Accept-Language": "ru-RU,ru;q=0.9",
+      Connection: "keep-alive",
+      "Content-Type": "application/json",
+      "L-Token": token,
+      Host: "api.ficto.ru",
+      Origin: "https://client.ficto.ru",
+      Referer: "https://client.ficto.ru/",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-site",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/134.0.0.0 Safari/537.36",
+      "sec-ch-ua":
+        '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+      "Content-Length": String(Buffer.byteLength(JSON.stringify(data), "utf8")),
+    };
 
-  // Логируем перед запросом
-  console.log('--- saveData: Request Headers ---')
-  console.dir(headers, { depth: null })
-  console.log('--- saveData: Request Body ---')
-  console.log(JSON.stringify(data, null, 2))
+    // Логируем перед запросом
+    console.log("--- saveData: Request Headers ---");
+    console.dir(headers, { depth: null });
+    console.log("--- saveData: Request Body ---");
+    console.log(JSON.stringify(data, null, 2));
 
-  const config: AxiosRequestConfig = {
-    headers,
-    transformRequest: [(body) => JSON.stringify(body)],
-    decompress: false,
-  }
+    const config: AxiosRequestConfig = {
+      headers,
+      transformRequest: [(body) => JSON.stringify(body)],
+      decompress: false,
+    };
 
-  try {
-    const resp = await axios.post<SaveDataResponse>(url, data, config)
+    try {
+      const resp = await axios.post<SaveDataResponse>(url, data, config);
 
-    // Логируем ответ
-    console.log('--- saveData: Response Status ---', resp.status)
-    console.log('--- saveData: Response Body ---', resp.data)
+      // Логируем ответ
+      console.log("--- saveData: Response Status ---", resp.status);
+      console.log("--- saveData: Response Body ---", resp.data);
 
-    return resp.data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    if (axios.isAxiosError(err)) {
-      console.error('--- saveData: Error Status ---', err.response?.status)
-      console.error('--- saveData: Error Body ---', err.response?.data)
-    } else {
-      console.error('--- saveData: Unexpected Error ---', err)
+      return resp.data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        console.error("--- saveData: Error Status ---", err.response?.status);
+        console.error("--- saveData: Error Body ---", err.response?.data);
+      } else {
+        console.error("--- saveData: Unexpected Error ---", err);
+      }
+      throw err;
     }
-    throw err
-  }
-}
-
-/**
- * Проверяет статус документа (заблокирован или нет).
- *
- * @param token - init_token для авторизации.
- * @returns Promise с DocumentResponse (включая build_id и флаги).
- */
-async getDocumentStatus(
-  token: string
-): Promise<DocumentResponse> {
-  // Фиксированный endpoint
-  const url = 'https://api.ficto.ru/client/layout/documents/299/status'
-  const data = { params: { panel_id: 3289 }, fixation_params: {} }
-  const headers = {
-    'Accept': 'application/json, text/plain, */*',
-    'Content-Type': 'application/json',
-    'L-Token': token
   }
 
-  console.log('--- getDocumentStatus: Request Headers ---')
-  console.dir(headers, { depth: null })
-  console.log('--- getDocumentStatus: Request Body ---', JSON.stringify(data, null, 2))
+  /**
+   * Проверяет статус документа (заблокирован или нет).
+   *
+   * @param token - init_token для авторизации.
+   * @returns Promise с DocumentResponse (включая build_id и флаги).
+   */
+  async getDocumentStatus(token: string): Promise<DocumentResponse> {
+    // Фиксированный endpoint
+    const url = "https://api.ficto.ru/client/layout/documents/299/status";
+    const data = { params: { panel_id: 3289 }, fixation_params: {} };
+    const headers = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "L-Token": token,
+    };
 
-  try {
-    const resp = await axios.post<DocumentResponse>(url, data, { headers })
-    console.log('--- getDocumentStatus: Response Status ---', resp.status)
-    console.log('--- getDocumentStatus: Response Body ---', resp.data)
-    return resp.data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    console.error('--- getDocumentStatus: Error ---', err.response?.status, err.response?.data)
-    this.handleRequestError(err, 'Ошибка проверки статуса документа')
+    console.log("--- getDocumentStatus: Request Headers ---");
+    console.dir(headers, { depth: null });
+    console.log(
+      "--- getDocumentStatus: Request Body ---",
+      JSON.stringify(data, null, 2)
+    );
+
+    try {
+      const resp = await axios.post<DocumentResponse>(url, data, { headers });
+      console.log("--- getDocumentStatus: Response Status ---", resp.status);
+      console.log("--- getDocumentStatus: Response Body ---", resp.data);
+      return resp.data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      console.error(
+        "--- getDocumentStatus: Error ---",
+        err.response?.status,
+        err.response?.data
+      );
+      this.handleRequestError(err, "Ошибка проверки статуса документа");
+    }
   }
-}
 
   /**
    * Отменяет блокировку документа.
@@ -287,36 +312,44 @@ async getDocumentStatus(
     panelId: number,
     token: string
   ): Promise<{ status: boolean }> {
-    const url = `https://api.ficto.ru/client/layout/documents/299/cancel`
+    const url = `https://api.ficto.ru/client/layout/documents/299/cancel`;
     const data = {
       params: { build_id: buildId, panel_id: panelId },
-      fixation_params: {}
-    }
+      fixation_params: {},
+    };
     const headers = {
-      'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json',
-      'L-Token': token
-    }
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "L-Token": token,
+    };
 
-    console.log('--- cancelDocumentLock: Request Headers ---')
-    console.dir(headers, { depth: null })
-    console.log('--- cancelDocumentLock: Request Body ---', JSON.stringify(data, null, 2))
+    console.log("--- cancelDocumentLock: Request Headers ---");
+    console.dir(headers, { depth: null });
+    console.log(
+      "--- cancelDocumentLock: Request Body ---",
+      JSON.stringify(data, null, 2)
+    );
 
     try {
-      const resp = await axios.post<{ status: boolean }>(url, data, { headers })
-      console.log('--- cancelDocumentLock: Response Status ---', resp.status)
-      console.log('--- cancelDocumentLock: Response Body ---', resp.data)
-      return resp.data  
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resp = await axios.post<{ status: boolean }>(url, data, {
+        headers,
+      });
+      console.log("--- cancelDocumentLock: Response Status ---", resp.status);
+      console.log("--- cancelDocumentLock: Response Body ---", resp.data);
+      return resp.data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      console.error('--- cancelDocumentLock: Error ---', err.response?.status, err.response?.data)
+      console.error(
+        "--- cancelDocumentLock: Error ---",
+        err.response?.status,
+        err.response?.data
+      );
       this.handleRequestError(
         err,
         `Ошибка отмены блокировки документа (buildId: ${buildId}, panelId: ${panelId})`
-      )
+      );
     }
   }
-
 
   /**
    * Отзывает подпись документа.
@@ -331,31 +364,147 @@ async getDocumentStatus(
     panelId: number,
     token: string
   ): Promise<{ status: boolean }> {
-    const url = 'https://api.ficto.ru/client/layout/documents/299/revoke';
+    const url = "https://api.ficto.ru/client/layout/documents/299/revoke";
     const data = {
       params: { build_id: buildId, panel_id: panelId },
-      fixation_params: {}
+      fixation_params: {},
     };
-    const headers: Record<string,string> = {
-      'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json',
-      'L-Token': token
+    const headers: Record<string, string> = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "L-Token": token,
     };
 
-    console.log('--- revokeSignature: Request Headers ---');
+    console.log("--- revokeSignature: Request Headers ---");
     console.dir(headers, { depth: null });
-    console.log('--- revokeSignature: Request Body ---', JSON.stringify(data, null, 2));
+    console.log(
+      "--- revokeSignature: Request Body ---",
+      JSON.stringify(data, null, 2)
+    );
 
     try {
-      const resp = await axios.post<{ status: boolean }>(url, data, { headers });
-      console.log('--- revokeSignature: Response Status ---', resp.status);
-      console.log('--- revokeSignature: Response Body ---', resp.data);
+      const resp = await axios.post<{ status: boolean }>(url, data, {
+        headers,
+      });
+      console.log("--- revokeSignature: Response Status ---", resp.status);
+      console.log("--- revokeSignature: Response Body ---", resp.data);
       return resp.data;
     } catch (err: any) {
-      console.error('--- revokeSignature: Error ---', err.response?.status, err.response?.data);
+      console.error(
+        "--- revokeSignature: Error ---",
+        err.response?.status,
+        err.response?.data
+      );
       this.handleRequestError(
         err,
         `Ошибка отзыва подписи документа (buildId: ${buildId}, panelId: ${panelId})`
+      );
+    }
+  }
+
+  /**
+   * Завершает (комплитит) документ.
+   *
+   * @param buildId — идентификатор сборки из статуса документа.
+   * @param panelId — идентификатор панели документа.
+   * @param token — init_token для авторизации.
+   * @returns Promise с `{ status: boolean }`.
+   */
+  async completeDocument(
+    buildId: number,
+    panelId: number,
+    token: string
+  ): Promise<{ status: boolean }> {
+    const url = "https://api.ficto.ru/client/layout/documents/299/complite";
+    const data = {
+      params: { build_id: buildId, panel_id: panelId },
+      fixation_params: {},
+    };
+    const headers = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "L-Token": token,
+    };
+
+    console.log("--- completeDocument: Request Headers ---");
+    console.dir(headers, { depth: null });
+    console.log(
+      "--- completeDocument: Request Body ---",
+      JSON.stringify(data, null, 2)
+    );
+
+    try {
+      const resp = await axios.post<{ status: boolean }>(url, data, {
+        headers,
+      });
+      console.log("--- completeDocument: Response Status ---", resp.status);
+      console.log("--- completeDocument: Response Body ---", resp.data);
+      return resp.data;
+    } catch (err: any) {
+      console.error(
+        "--- completeDocument: Error ---",
+        err.response?.status,
+        err.response?.data
+      );
+      this.handleRequestError(
+        err,
+        `Ошибка завершения документа (buildId: ${buildId}, panelId: ${panelId})`
+      );
+    }
+  }
+
+  /**
+   * Проверяет документ на ошибки.
+   *
+   * @param documentId — идентификатор документа.
+   * @param panelId — идентификатор панели документа.
+   * @param userTimezone — смещение часового пояса пользователя.
+   * @param token — init_token для авторизации.
+   * @returns Promise с ответом API .
+   */
+  async checkErrors(
+    documentId: number,
+    panelId: number,
+    userTimezone: number,
+    token: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ): Promise<any> {
+    const url = "https://api.ficto.ru/client/layout/documents/299/check-errors";
+    const data = {
+      params: {
+        document_id: documentId,
+        panel_id: panelId,
+        user_timezone: userTimezone,
+      },
+      fixation_params: {},
+    };
+    const headers = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      "L-Token": token,
+    };
+
+    console.log("--- checkErrors: Request Headers ---");
+    console.dir(headers, { depth: null });
+    console.log(
+      "--- checkErrors: Request Body ---",
+      JSON.stringify(data, null, 2)
+    );
+
+    try {
+      const resp = await axios.post<any>(url, data, { headers });
+      console.log("--- checkErrors: Response Status ---", resp.status);
+      console.log("--- checkErrors: Response Body ---", resp.data);
+      return resp.data;
+    } catch (err: any) {
+      console.error(
+        "--- checkErrors: Error ---",
+        err.response?.status,
+        err.response?.data
+      );
+      this.handleRequestError(
+        err,
+        `Ошибка проверки документа на ошибки (documentId: ${documentId}, panelId: ${panelId})`
       );
     }
   }
