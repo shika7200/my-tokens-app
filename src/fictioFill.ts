@@ -81,13 +81,13 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
     console.error("Обнаружены ошибки при проверке документа:", checkResult.errors)
     throw new Error("Обнаружены ошибки в документе — завершение отменено")
   }
+  const refreshed = await api.getDocumentStatus(statusToken);
 
-  console.log("Ошибок не найдено, выполняем комплит…")
+  // Наконец – комплитим с правильным build_id
   await api.completeDocument(
-    docStatus.document.build_id,
+    refreshed.document.build_id,
     fixedPanelId,
     statusToken
-  )
-
+  );
   return { success: true }
 }
