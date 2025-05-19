@@ -92,13 +92,15 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
   console.log("Статус документа:", docStatus.document);
   console.log("=== END DEBUG INFO ===");
 
-  const refreshed = await api.getDocumentStatus(statusToken);
-
+  
+  const refreshedInitTokens = await api.getInitTokens(uuid, access_token)
+  const refreshedstatusToken = initTokens[refreshedInitTokens.length - 1]
+  const refreshed = await api.getDocumentStatus(refreshedstatusToken);
   // Наконец – комплитим с правильным build_id
   await api.completeDocument(
     refreshed.document.build_id,
     fixedPanelId,
-    statusToken
+    refreshedstatusToken
   );
   return { success: true }
 }
