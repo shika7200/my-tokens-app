@@ -427,7 +427,7 @@ export class ApiService {
     };
 
     console.log("--- completeDocument: Request Headers ---");
-    console.dir(headers, { depth: null });  
+    console.dir(headers, { depth: null });
     console.log(
       "--- completeDocument: Request Body ---",
       JSON.stringify(data, null, 2)

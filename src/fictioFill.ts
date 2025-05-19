@@ -81,6 +81,17 @@ export async function FictioFill(inputJson: InputJson): Promise<{ success: true 
     console.error("Обнаружены ошибки при проверке документа:", checkResult.errors)
     throw new Error("Обнаружены ошибки в документе — завершение отменено")
   }
+
+
+  console.log("=== DEBUG INFO BEFORE COMPLETE ===");
+  console.log("initTokens.length:", initTokens.length);
+  console.log("Последний токен (index " + (initTokens.length - 1) + "):", initTokens[initTokens.length - 1]);
+  console.log("statusToken для completeDocument:", statusToken);
+  console.log("Текущий build_id:", docStatus.document.build_id);
+  console.log("Текущий panelId:", fixedPanelId);
+  console.log("Статус документа:", docStatus.document);
+  console.log("=== END DEBUG INFO ===");
+
   const refreshed = await api.getDocumentStatus(statusToken);
 
   // Наконец – комплитим с правильным build_id
